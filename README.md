@@ -6,7 +6,7 @@ Project created & compiled by: [Ambientiumim](https://github.com/Ambientiumim) &
 - [Web3Js](https://web3js.readthedocs.io/en/v1.10.0/)
 - [Hardhat](https://hardhat.org/)
 - [OpenZeppelin](https://www.openzeppelin.com/)
-- [Chainlink Hackathon: Block Magic]([https://chain.link/hackathon?utm_medium=referral&utm_source=chainlink&utm_campaign=constellation-hackathon&agid=0s477xp3xv6v](https://chainlinkblockmagic.devpost.com/?ref_feature=challenge&ref_medium=your-open-hackathons&ref_content=Submissions+open))
+- [Chainlink Hackathon: Block Magic](https://chain.link/hackathon)
 
 ## ...
 ...
