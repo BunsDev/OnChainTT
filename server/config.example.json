@@ -1,0 +1,7 @@
+{
+    "HOST": "examplehost",
+    "USER": "exampleuser",
+    "PASSWORD": "examplepassword",
+    "DATABASE": "exampledatabase",
+    "RPC_API_KEY": "exampleapikey"
+}

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <title>Tic Tac Toe</title>
+</head>
+<body>
+  <div class="background">
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+  <div class="menu-container">
+    <div class="menu">
+      <div class="avatar-container">
+        <img class="avatar-image" src="" alt="Avatar" style="display:none;">
+      </div>
+      <input type="number" class="bet-amount-input" placeholder="Place bet in: $MATIC" step="0.0001" min="0.0001" style="display:none;">
+      <button class="button connect-wallet-button">
+        <span class="icon">🦊</span> Connect Wallet
+      </button>
+      <button class="button start-button" style="display:none;">
+        <span class="icon">🎮</span> Start Game
+      </button>
+      <button class="button rules-button rules-width" style="display:none;">
+        <span class="icon">📘</span> Rules
+      </button>
+      <button class="button settings-button settings-width">
+          <span class="icon">⚙️</span> Settings
+      </button>
+      <div class="xp-bar-container" style="display: none;">
+          <label for="xp-bar">Rank: <span class="rank-name">Beginner</span></label>
+          <progress id="xp-bar" value="0" max="100"></progress>
+          <span class="xp-text">0/100 XP</span>
+      </div>
+      <div class="game-list"></div>
+      <footer class="footer" style="display: none;">
+        <div class="footer-text">
+          © 2024 BlockMagic Hackathon: "OnChainTTT".<br>
+          Created & Compiled by Ambientiumim and RuffBuff.
+        </div>
+        <div class="social-icons">
+          <a href="https://github.com/Ambientiumim" target="_blank"><i class="fab fa-github"></i></a>
+          <a href="https://x.com/Ambientiumim" target="_blank"><i class="fab fa-twitter"></i></a>
+          <a href="https://t.me/ambientium" target="_blank"><i class="fab fa-telegram-plane"></i></a>
+          <a href="https://github.com/ruffbuff" target="_blank"><i class="fab fa-github"></i></a>
+          <a href="https://x.com/RuffBuff_" target="_blank"><i class="fab fa-twitter"></i></a>
+          <a href="https://t.me/ruffbuff" target="_blank"><i class="fab fa-telegram-plane"></i></a>
+        </div>
+      </footer>
+    </div>
+  </div>
+  <div class="message"></div>
+  <div class="board">
+    <div class="cell"></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+    <div class="cell"></div>
+  </div>
+  <div class="avatars-board" style="display:none;">
+    <div class="player-avatar">
+      <img class="player-avatar-image" src="" alt="Player Avatar">
+    </div>
+  </div>
+  <div class="modal">
+    <div class="modal-content">
+      <div class="modal-message"></div>
+      <button class="button restart-button">Return to Menu</button>
+    </div>
+  </div>
+  <div class="modal avatar-modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close-button">X</span>
+      <div class="modal-message">Choose your avatar</div>
+      <input type="file" class="avatar-input" accept="image/*">
+      <button class="button save-avatar-button">Save</button>
+    </div>
+  </div>
+  <div class="modal rules-modal" style="display: none;">
+      <div class="modal-content">
+          <span class="close-button">X</span>
+          <div class="modal-message">Game Rules</div>
+          <div class="video-container">
+              <video controls>
+                <source src="path_to_video.mp4" type="video/mp4">
+                  Your browser does not support the video tag.
+              </video>
+          </div>
+          <div class="rules-text">
+              <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.</p>
+          </div>
+      </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  <script type="module" src="./script.js"></script>
+</body>
+</html>
