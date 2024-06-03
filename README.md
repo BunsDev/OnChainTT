@@ -1,14 +1,14 @@
 # Block Magic: A Chainlink Hackathon, "OnChainTTT"
 Project created & compiled by: [Ambientiumim](https://github.com/Ambientiumim) and [ruffbuff](https://github.com/ruffbuff)
 
-## Supported by:
+## Supported by
 - [NodeJs](https://nodejs.org/)
 - [Web3Js](https://web3js.readthedocs.io/en/v1.10.0/)
 - [Hardhat](https://hardhat.org/)
 - [OpenZeppelin](https://www.openzeppelin.com/)
 - [Chainlink Hackathon: Block Magic](https://chain.link/hackathon)
 
-## Demo:
+## Demo
 [![OnChainTTT Demo](http://img.youtube.com/vi/45dmydOxl4U/0.jpg)](https://www.youtube.com/watch?v=45dmydOxl4U "Watch OnChainTTT Demo")
 
 ## Overview
@@ -60,3 +60,6 @@ Here's a look at the "OnChainTTT" game interface:
 "Block Magic: OnChainTTT" exemplifies the integration of blockchain technology with traditional gaming, enhancing transparency, security, and fairness through the use of smart contracts and decentralized services like Chainlink VRF and Automation. It showcases how blockchain can transform gaming by adding verifiable fairness and automated game management, promising a robust platform for secure, trustless gaming experiences.
 
 Thank you for exploring "Block Magic: OnChainTTT". Dive into the code, try out the game, and see how blockchain technology is revolutionizing the way we play and interact with digital systems.
+
+## License
+This project is licensed under the MIT License - see the [MIT LICENSE](LICENSE) file for details.
