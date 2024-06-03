@@ -11,6 +11,28 @@
     --shadow-color: rgba(0, 0, 0, 0.1);
 }
 
+::-webkit-scrollbar {
+    width: 8px; /* Scrollbar width */
+}
+
+::-webkit-scrollbar-track {
+    background: var(--secondary-color); /* Track background color */
+    border-radius: 10px; /* Rounded corners for the track */
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--accent-color); /* Thumb color */
+    border-radius: 10px; /* Rounded corners for the thumb */
+    border: 2px solid var(--secondary-color); /* Creates a border around the thumb */
+}
+
+/* Apply the custom scrollbar to any scrollable area */
+.scrollable {
+    overflow-y: auto; /* Enables vertical scrolling if needed */
+    scrollbar-width: thin; /* For Firefox */
+    scrollbar-color: var(--accent-color) var(--secondary-color); /* For Firefox */
+}
+
 * {
     padding: 0;
     margin: 0;
@@ -373,7 +395,7 @@ body {
     transition: all 0.3s ease;
     display: block;
     width: 90%;
-    max-width: 300px;
+    max-width: 250px;
     background-color: var(--background-color);
     color: var(--text-color);
     outline: none;
@@ -415,7 +437,7 @@ body {
 
 .game-list {
     margin-top: 10px;
-    max-height: 390px;
+    max-height: 200px;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--accent-color) var(--secondary-color);
@@ -566,7 +588,7 @@ body {
 }
 
 .button.start-button {
-    width: 350px;
+    width: 300px;
 }
 
 .button.rules-width {
@@ -681,6 +703,10 @@ progress[value]::-moz-progress-bar {
 .avatar-input {
     margin-top: 10px;
     margin-bottom: 10px;
+}
+
+.button.play-ai-button {
+    width: 350px;
 }
 
 .button.settings-width {

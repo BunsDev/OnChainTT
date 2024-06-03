@@ -41,7 +41,10 @@
         <span class="icon">🦊</span> Connect Wallet
       </button>
       <button class="button start-button" style="display:none;">
-        <span class="icon">🎮</span> Start Game
+        <span class="icon">🎮</span> Play vs Player
+      </button>
+      <button class="button play-ai-button" disabled style="display:none;">
+        <span class="icon">🤖</span> Play vs AI - (NotWorking)
       </button>
       <button class="button rules-button rules-width" style="display:none;">
         <span class="icon">📘</span> Rules
@@ -73,15 +76,15 @@
   </div>
   <div class="message"></div>
   <div class="board">
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
   </div>
   <div class="avatars-board" style="display:none;">
     <div class="player-avatar">
@@ -91,7 +94,7 @@
   <div class="modal">
     <div class="modal-content">
       <div class="modal-message"></div>
-      <button class="button restart-button">Return to Menu</button>
+      <button class="button restart-button" id="restart-button">Return to Menu (30)</button>
     </div>
   </div>
   <div class="modal avatar-modal" style="display: none;">
@@ -102,18 +105,55 @@
       <button class="button save-avatar-button">Save</button>
     </div>
   </div>
-  <div class="modal rules-modal" style="display: none;">
+  <div class="modal modal-ai">
+      <div class="modal-content">
+          <div class="modal-message modal-message-ai"></div>
+          <button class="button restart-button restart-button-ai">Return to Menu (30)</button>
+      </div>
+  </div>
+  <div class="modal rules-modal scrollable" style="display: none;">
       <div class="modal-content">
           <span class="close-button">X</span>
           <div class="modal-message">Game Rules</div>
           <div class="video-container">
               <video controls>
-                <source src="path_to_video.mp4" type="video/mp4">
+                <source src="test.mp4" type="video/mp4">
                   Your browser does not support the video tag.
               </video>
           </div>
           <div class="rules-text">
-              <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.</p>
+              <h2>Welcome to OnChain Tic Tac Toe!</h2>
+              <p><strong>Objective:</strong> The goal is simple: be the first to get three of your marks in a row (horizontally, vertically, or diagonally).</p>
+              
+              <h3>Starting the Game:</h3>
+              <ul>
+                  <li>Each match begins with two players, where one player is randomly assigned 'X' and the other 'O'.</li>
+                  <li>The player who is assigned 'X' will make the first move.</li>
+              </ul>
+              
+              <h3>Gameplay Rules:</h3>
+              <ul>
+                  <li>Players will alternate turns, placing their respective marks ('X' or 'O') in the empty squares.</li>
+                  <li>The first player to line up three of their marks in a vertical, horizontal, or diagonal row wins the game.</li>
+              </ul>
+
+              <h3>If a Player Disconnects:</h3>
+              <p>If you disconnect during a game, it will count as a forfeiture, resulting in an automatic loss. The game will automatically award the victory to the connected player.</p>
+              
+              <h3>Handling Draws:</h3>
+              <p>A match is considered a draw if all cells are filled and no player has successfully aligned three marks. In the event of a draw, the bet is returned to both players, excluding transaction fees (gas).</p>
+              
+              <h3>Important Notes:</h3>
+              <ul>
+                  <li>If a game does not conclude naturally (due to a disconnection or other issues), you may need to invoke the <code>publicRequestGameResult</code> to force a check on the game status and process the outcome appropriately.</li>
+                  <li>It's advisable to cancel any games you create if you wish to exit or are unable to continue playing, to avoid locking up the game for other players.</li>
+                  <li>Remember to manage your open games responsibly to ensure a smooth gaming experience for everyone.</li>
+              </ul>
+              
+              <h3>Dispute Resolution:</h3>
+              <p>In cases of technical difficulties affecting game outcomes, players can contact support for resolution. However, the smart contract's automatic mechanisms typically handle most common issues directly on the blockchain.</p>
+              
+              <p>Enjoy your game, play fair, and may the best player win!</p>
           </div>
       </div>
   </div>

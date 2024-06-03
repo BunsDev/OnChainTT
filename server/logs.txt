@@ -1,0 +1,14 @@
+2024-06-03T02:14:02.348Z - Wallet connected: Session 3 - Account 0x5cee0e6d261da886aa4f02fb47f45e1e9fa4991b
+2024-06-03T02:14:08.297Z - Client disconnected: Session 3
+2024-06-03T02:14:17.315Z - Wallet connected: Session 4 - Account 0xcdf5b1ed8fd5b89de98c325854331ae4b4e996e6
+2024-06-03T02:15:26.203Z - Wallet connected: Session 5 - Account 0x5cee0e6d261da886aa4f02fb47f45e1e9fa4991b
+2024-06-03T02:15:37.582Z - Session 5 started a game with bet amount 0.0001
+2024-06-03T02:17:01.805Z - Session 4 joined a game
+2024-06-03T02:17:01.957Z - Game paired: Session 4 (X) vs Session 5 (O) for game 31 with bet amount 0.0001
+2024-06-03T02:17:07.708Z - Move by Session 4: ["","","","","","","X","",""]
+2024-06-03T02:17:10.709Z - Move by Session 5: ["","","","","","O","X","",""]
+2024-06-03T02:17:13.091Z - Move by Session 4: ["","","X","","","O","X","",""]
+2024-06-03T02:17:15.814Z - Move by Session 5: ["","","X","","","O","X","","O"]
+2024-06-03T02:17:19.789Z - Move by Session 4: ["","","X","","X","O","X","","O"]
+2024-06-03T02:17:19.810Z - Game result: X wins
+2024-06-03T02:18:42.553Z - Client disconnected: Session 5

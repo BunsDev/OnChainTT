@@ -1,4 +1,5 @@
 import { contractAddress, contractABI } from './contract.js';
+import { bestMove } from './ai.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const cells = document.querySelectorAll('.cell');
@@ -11,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const betAmountInput = document.querySelector('.bet-amount-input');
   const gameList = document.querySelector('.game-list');
   const menu = document.querySelector('.menu');
-  const xpBarContainer = document.querySelector('.xp-bar-container');
 
   const settingsButton = document.querySelector('.settings-button');
   const avatarModal = document.querySelector('.avatar-modal');
@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let gameId = null;
   let modalTimeout;
   let gameSessions = {};
+  let gameMode = 'PVP'; // 'AI' for AI mode, 'PVP' for player vs player
 
   const socket = io("https://app.sbc.pp.ua:443");
 
@@ -180,11 +181,116 @@ document.addEventListener('DOMContentLoaded', () => {
       rulesModal.style.display = 'none';
   });
 
+  const closeButtons = document.querySelectorAll('.close-button');
+  closeButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const modal = button.closest('.modal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    });
+  });
+
   window.addEventListener('click', (event) => {
       if (event.target === rulesModal) {
           rulesModal.style.display = 'none';
       }
   });
+
+  connectWalletButton.addEventListener('click', async () => {
+    await connectWallet();
+    const avatarData = await loadAvatarFromDatabase(account);
+    if (avatarData) {
+      updateAvatarDisplay(avatarData);
+    }
+    document.querySelector('.play-ai-button').style.display = 'block';
+    settingsButton.style.display = 'block';
+  });
+  
+  restartButton.addEventListener('click', () => {
+    modal.style.display = 'none';
+    gameBoard.fill("");
+    refreshGameBoard();
+    menu.style.display = 'flex';
+    document.querySelector('.board').style.display = 'none';
+    statusMessage.style.display = 'none';
+    gameId = null;
+    updateGameList();
+    document.querySelector('.xp-bar-container').style.display = 'block';
+  });
+
+  startButton.addEventListener('click', async () => {
+    if (!socket.connected) {
+      alert('Cannot connect to the game server. Please try again later.');
+      return;
+    }
+
+    const betAmount = betAmountInput.value;
+    if (!betAmount || betAmount <= 0) {
+      alert("Please enter a valid bet amount.");
+      return;
+    }
+
+    try {
+      const result = await contract.methods.createGame().send({ from: account, value: web3.utils.toWei(betAmount, "ether") });
+      gameId = result.events.GameCreated.returnValues.gameId.toString();
+      socket.emit("message", JSON.stringify({ method: "start", account, gameId, betAmount }));
+      updateGameList();
+    } catch (error) {
+      console.error("Failed to create game:", error);
+    }
+  });
+
+  gameList.addEventListener('click', async (event) => {
+      if (!socket.connected) {
+          alert('Cannot connect to the game server. Please try again later.');
+          return;
+      }
+
+      if (event.target.classList.contains('join-game-button')) {
+          const selectedGameId = event.target.dataset.gameId;
+          const betAmount = event.target.dataset.betAmount;
+
+          await checkRandomnessAndJoin(selectedGameId, betAmount);
+      } else if (event.target.classList.contains('cancel-game-button')) {
+          const gameId = event.target.dataset.gameId;
+          try {
+              await contract.methods.cancelGame(gameId).send({ from: account });
+              updateGameList();
+          } catch (error) {
+              console.error("Failed to cancel game:", error);
+              alert("Failed to cancel game: " + error.message);
+          }
+      }
+  });
+
+  async function checkRandomnessAndJoin(gameId, betAmount) {
+      try {
+          const randomNumbers = await contract.methods.getRandomWords(gameId).call();
+          console.log("Random numbers:", randomNumbers);
+
+          if (randomNumbers[0] === 0n && randomNumbers[1] === 0n) {
+              alert('Random numbers are not ready yet. Please wait...');
+              return;
+          }
+
+          const result = await contract.methods.joinGame(gameId).send({ from: account, value: web3.utils.toWei(betAmount, "ether") });
+          console.log('Successfully joined the game:', result);
+
+          // Изменение: Убедимся, что мы не обращаемся к undefined свойству
+          if (result.events && result.events.GameJoined && result.events.GameJoined.returnValues) {
+              gameId = result.events.GameJoined.returnValues.gameId.toString();
+          }
+
+          socket.emit("message", JSON.stringify({ method: "join", account, gameId, betAmount }));
+          modalMessage.textContent = "Joining an existing game...";
+          modal.style.display = 'flex';
+          updateGameList();
+      } catch (error) {
+          console.error("Error when trying to join game:", error);
+          alert("Failed to join game: " + error.message);
+      }
+  }
 
   async function saveAvatarToDatabase(account, avatarData) {
     const response = await fetch('/save-avatar', {
@@ -200,12 +306,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadAvatarFromDatabase(account) {
-      // console.log(`Attempting to load avatar for account: ${account}`);
       try {
           const response = await fetch(`/get-avatar?account=${account}`);
           if (response.ok) {
               const data = await response.json();
-              // console.log(`Avatar loaded successfully for account: ${account}`, data);
               return data.avatarData;
           } else {
               console.error(`Failed to load avatar for account: ${account}. Status: ${response.status}`);
@@ -227,30 +331,49 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showModal(message, options = {}) {
-    modalMessage.textContent = message;
-    modal.style.display = 'flex';
-    statusMessage.style.display = 'none';
+      modalMessage.textContent = message;
+      modal.style.display = 'flex';
+      statusMessage.style.display = 'none';
 
-    restartButton.style.display = options.showRestartButton ? 'block' : 'none';
-    
-    if (options.showCancelButton) {
-        const cancelButton = document.createElement('button');
-        cancelButton.textContent = 'Cancel Game';
-        cancelButton.className = 'button cancel-game-button';
-        cancelButton.onclick = function() {
-            socket.emit("message", JSON.stringify({ method: "cancel", gameId: gameId }));
-            closeModalAndRefresh();
-        };
-        modalMessage.appendChild(cancelButton);
-    }
+      if (options.showRestartButton) {
+          restartButton.style.display = 'block';
+          let timeLeft = 30;
+          restartButton.textContent = `Return to Menu (${timeLeft})`;
+          const timerInterval = setInterval(() => {
+              timeLeft -= 1;
+              restartButton.textContent = `Return to Menu (${timeLeft})`;
+              if (timeLeft <= 0) {
+                  clearInterval(timerInterval);
+                  closeModalAndRefresh();
+              }
+          }, 1000);
 
-    if (options.autoClose) {
-        modalTimeout = setTimeout(() => {
-            closeModalAndRefresh();
-        }, 30000);
-    } else {
-        clearTimeout(modalTimeout);
-    }
+          restartButton.onclick = () => {
+              clearInterval(timerInterval);
+              closeModalAndRefresh();
+          };
+      } else {
+          restartButton.style.display = 'none';
+      }
+
+      if (options.showCancelButton) {
+          const cancelButton = document.createElement('button');
+          cancelButton.textContent = 'Cancel Game';
+          cancelButton.className = 'button cancel-game-button';
+          cancelButton.onclick = function() {
+              socket.emit("message", JSON.stringify({ method: "cancel", gameId: gameId }));
+              closeModalAndRefresh();
+          };
+          modalMessage.appendChild(cancelButton);
+      }
+
+      if (options.autoClose) {
+          modalTimeout = setTimeout(() => {
+              closeModalAndRefresh();
+          }, 30000);
+      } else {
+          clearTimeout(modalTimeout);
+      }
   }
 
   async function updatePlayerData() {
@@ -309,7 +432,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateStatusMessage() {
-      if (statusMessage) {
+      if (gameMode === 'AI') {
+          statusMessage.textContent = (playerSymbol === currentPlayer) ? "Your step" : "AI's turn";
+      } else if (gameMode === 'PVP') {
           statusMessage.textContent = (playerSymbol === currentPlayer) ? "Your step" : `Waiting for opponent's move`;
       }
   }
@@ -325,9 +450,14 @@ document.addEventListener('DOMContentLoaded', () => {
       avatarsBoard.style.display = 'none';
   }
 
-  async function connectWallet() {
-    if (window.ethereum) {
-      try {
+async function connectWallet() {
+    if (!window.ethereum) {
+        console.log("MetaMask is not installed.");
+        alert("Please install MetaMask!");
+        return;
+    }
+
+    try {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         account = accounts[0];
         console.log("Wallet connected, account:", account);
@@ -336,74 +466,74 @@ document.addEventListener('DOMContentLoaded', () => {
         contract = new web3.eth.Contract(contractABI, contractAddress);
 
         const networkId = await web3.eth.net.getId();
-        const expectedNetworkId = 80002;
+        const expectedNetworkId = 80002;  // Example: ID for the Amoy Testnet
+
         if (networkId !== expectedNetworkId) {
-          // console.error("Connected to the wrong network.");
-          try {
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: '0x13882' }],
-            });
-          } catch (switchError) {
-            if (switchError.code === 4902) {
-              try {
-                await window.ethereum.request({
-                  method: 'wallet_addEthereumChain',
-                  params: [{
-                    chainId: '0x13882',
-                    chainName: 'Amoy Testnet',
-                    rpcUrls: ['https://rpc-amoy.polygon.technology'],
-                    nativeCurrency: {
-                      name: 'MATIC',
-                      symbol: 'MATIC',
-                      decimals: 18,
-                    },
-                    blockExplorerUrls: ['https://amoy.polygonscan.com/']
-                  }],
-                });
-                console.log("Successfully added the network.");
-              } catch (addError) {
-                alert('Failed to add the network.');
-                console.error('Failed to add the network:', addError);
-              }
-            } else {
-              alert('Please switch to the correct network.');
-              console.error('Failed to switch network:', switchError);
-            }
-            return;
-          }
+            await switchNetwork();
         }
 
-        const playerData = await contract.methods.players(account).call();
-        if (!playerData) throw new Error("Failed to fetch player data");
-
-        updateXPBar(playerData.xp, playerData.rankIndex);
-        if (menu.style.display !== 'none') {
-          document.querySelector('.xp-bar-container').style.display = 'block';
-          document.querySelector('.rules-button').style.display = 'block'; 
-        }
-
-        socket.emit("message", JSON.stringify({ method: "connect", account }));
-        updatePlayerData();
-        updateGameList();
-        listenForGameCreated();
-
-        document.querySelector('.footer').style.display = 'flex';
-
-        document.querySelector('.rules-button').style.display = 'none';
-
-        connectWalletButton.style.display = 'none';
-        startButton.style.display = 'block';
-        betAmountInput.style.display = 'block';
-        rulesButton.style.display = 'block';
-        settingsButton.style.display = 'block';
-      } catch (error) {
+        await initializeUserInterface();
+    } catch (error) {
         console.error("Connection error:", error);
-      }
-    } else {
-      console.log("MetaMask is not installed.");
-      alert("Please install MetaMask!");
     }
+}
+
+  async function switchNetwork() {
+      const chainId = '0x13882';
+
+      try {
+          await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: chainId }],
+          });
+      } catch (error) {
+          if (error.code === 4902) {
+              try {
+                  await window.ethereum.request({
+                      method: 'wallet_addEthereumChain',
+                      params: [{
+                          chainId: chainId,
+                          chainName: 'Amoy Testnet',
+                          rpcUrls: ['https://polygon-amoy.g.alchemy.com/v2/jYmGsDKr5YDgwlNNOGrXywzBe9PmrLgY'],
+                          nativeCurrency: {
+                              name: 'MATIC',
+                              symbol: 'MATIC',
+                              decimals: 18,
+                          },
+                          blockExplorerUrls: ['https://amoy.polygonscan.com/']
+                      }],
+                  });
+                  console.log("Network added successfully.");
+              } catch (addError) {
+                  console.error('Failed to add the network:', addError);
+                  alert('Failed to add the network. Please try again or check your network settings.');
+                  return;
+              }
+          } else {
+              console.error('Failed to switch network:', error);
+              alert('Please switch to the correct network.');
+              return;
+          }
+      }
+  }
+
+  async function initializeUserInterface() {
+      const playerData = await contract.methods.players(account).call();
+      updateXPBar(playerData.xp, playerData.rankIndex);
+
+      document.querySelector('.xp-bar-container').style.display = 'block';
+      document.querySelector('.rules-button').style.display = 'block';
+      document.querySelector('.footer').style.display = 'flex';
+      connectWalletButton.style.display = 'none';
+      startButton.style.display = 'block';
+      betAmountInput.style.display = 'block';
+      rulesButton.style.display = 'block';
+      settingsButton.style.display = 'block';
+
+      socket.emit("message", JSON.stringify({ method: "connect", account }));
+      updatePlayerData();
+      updateGameList();
+      listenForGameCreated();
   }
 
   function updateXPBar(xp, rankIndex) {
@@ -437,83 +567,6 @@ document.addEventListener('DOMContentLoaded', () => {
           xpBarThumb.style.right = `${100 - percentage}%`;
       }
   }
-
-  connectWalletButton.addEventListener('click', async () => {
-    await connectWallet();
-    const avatarData = await loadAvatarFromDatabase(account);
-    if (avatarData) {
-      updateAvatarDisplay(avatarData);
-    }
-    settingsButton.style.display = 'block';
-  });
-  
-  restartButton.addEventListener('click', () => {
-    modal.style.display = 'none';
-    gameBoard.fill("");
-    refreshGameBoard();
-    menu.style.display = 'flex';
-    document.querySelector('.board').style.display = 'none';
-    statusMessage.style.display = 'none';
-    gameId = null;
-    updateGameList();
-    document.querySelector('.xp-bar-container').style.display = 'block';
-  });
-
-  startButton.addEventListener('click', async () => {
-    if (!socket.connected) {
-      alert('Cannot connect to the game server. Please try again later.');
-      return;
-    }
-
-    const betAmount = betAmountInput.value;
-    if (!betAmount || betAmount <= 0) {
-      alert("Please enter a valid bet amount.");
-      return;
-    }
-
-    try {
-      const result = await contract.methods.createGame().send({ from: account, value: web3.utils.toWei(betAmount, "ether") });
-      gameId = result.events.GameCreated.returnValues.gameId.toString();
-      socket.emit("message", JSON.stringify({ method: "start", account, gameId, betAmount }));
-      updateGameList();
-    } catch (error) {
-      console.error("Failed to create game:", error);
-    }
-  });
-
-  gameList.addEventListener('click', async (event) => {
-    if (!socket.connected) {
-      alert('Cannot connect to the game server. Please try again later.');
-      return;
-    }
-
-    if (event.target.classList.contains('join-game-button')) {
-      const selectedGameId = event.target.dataset.gameId;
-      const betAmount = event.target.dataset.betAmount;
-
-      try {
-        const result = await contract.methods.joinGame(selectedGameId).send({ from: account, value: web3.utils.toWei(betAmount, "ether") });
-        //console.log('Game joined:', result);
-        gameId = selectedGameId;
-        socket.emit("message", JSON.stringify({ method: "join", account, gameId, betAmount }));
-        modalMessage.textContent = "Joining an existing game...";
-        modal.style.display = 'flex';
-        updateGameList();
-      } catch (error) {
-        console.error("Failed to join game:", error);
-        alert("Failed to join game: " + error.message);
-      }
-    } else if (event.target.classList.contains('cancel-game-button')) {
-      const gameId = event.target.dataset.gameId;
-      try {
-        const result = await contract.methods.cancelGame(gameId).send({ from: account });
-        updateGameList();
-      } catch (error) {
-        console.error("Failed to cancel game:", error);
-        alert("Failed to cancel game: " + error.message);
-      }
-    }
-  });
 
   function listenForGameCreated() {
     contract.events.GameCreated({}, (error, event) => {
@@ -588,5 +641,135 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
     }
+  }
+
+  //////////////////////////////////////////////////////////////
+
+  const playAIButton = document.querySelector('.play-ai-button');
+  playAIButton.addEventListener('click', playWithAI);
+
+  function showModalAi(message) {
+      const modalAi = document.querySelector('.modal-ai');
+      const modalMessageAi = document.querySelector('.modal-message-ai');
+      const restartButtonAi = document.querySelector('.restart-button-ai');
+
+      modalMessageAi.textContent = message;
+      modalAi.style.display = 'flex';
+
+      let timeLeft = 30;
+      restartButtonAi.textContent = `Return to Menu (${timeLeft})`;
+      const timerInterval = setInterval(() => {
+          timeLeft--;
+          restartButtonAi.textContent = `Return to Menu (${timeLeft})`;
+          if (timeLeft <= 0) {
+              clearInterval(timerInterval);
+              closeModalAndRefreshAi();
+          }
+      }, 1000);
+
+      restartButtonAi.onclick = () => {
+          clearInterval(timerInterval);
+          closeModalAndRefreshAi();
+      };
+  }
+
+  function closeModalAndRefreshAi() {
+      const modalAi = document.querySelector('.modal-ai');
+      modalAi.style.display = 'none';
+      gameBoard.fill("");
+      refreshGameBoard();
+      document.querySelector('.menu').style.display = 'flex';
+      document.querySelector('.board').style.display = 'none';
+      document.querySelector('.message').style.display = 'none';
+      gameActive = false;
+  }
+
+  function playWithAI() {
+      gameBoard.fill("");
+      refreshGameBoard();
+      gameActive = true;
+      currentPlayer = 'X';
+
+      document.querySelector('.menu').style.display = 'none';
+      document.querySelector('.board').style.display = 'grid';
+
+      updateStatusMessageAi("Your turn");
+
+      cells.forEach(cell => {
+          cell.removeEventListener('click', humanMove);
+          cell.addEventListener('click', humanMove);
+      });
+
+      if (currentPlayer === 'O') {
+          setTimeout(aiMove, 500);
+      }
+  }
+
+  function humanMove(event) {
+      const index = parseInt(event.target.dataset.index);
+      if (gameBoard[index] === "" && currentPlayer === playerSymbol) {
+          gameBoard[index] = playerSymbol;
+          refreshGameBoard();
+          if (gameMode === 'AI') {
+              updateStatusMessageAi("AI's turn");
+              setTimeout(aiMove, 500);
+          } else {
+              socket.emit("message", JSON.stringify({ method: "move", symbol: playerSymbol, field: gameBoard, gameId: gameId }));
+              currentPlayer = (currentPlayer === 'X' ? 'O' : 'X');
+              updateStatusMessage();
+          }
+      }
+  }
+
+  function aiMove() {
+      if (!gameActive || currentPlayer !== 'O') return;
+
+      const index = bestMove(gameBoard, 'O');
+      if (index !== -1) {
+          gameBoard[index] = 'O';
+          currentPlayer = 'X';
+          refreshGameBoard();
+          updateStatusMessageAi("Your turn");
+
+          checkGameOutcome();
+      }
+  }
+
+  function updateStatusMessageAi(message) {
+      const statusMessage = document.querySelector('.message');
+      statusMessage.textContent = message;
+  }
+
+  function checkGameOutcome() {
+      const outcome = checkGameStatus(gameBoard);
+      if (outcome) {
+          gameActive = false;
+          showModalAi(`${outcome.message} wins`);
+      }
+  }
+
+  function checkGameStatus(board) {
+      const winCombinations = [
+          [0, 1, 2],
+          [3, 4, 5],
+          [6, 7, 8],
+          [0, 3, 6],
+          [1, 4, 7],
+          [2, 5, 8],
+          [0, 4, 8],
+          [2, 4, 6]
+      ];
+
+      for (let combo of winCombinations) {
+          if (board[combo[0]] !== "" && board[combo[0]] === board[combo[1]] && board[combo[1]] === board[combo[2]]) {
+              return { message: `${board[combo[0]]} wins` };
+          }
+      }
+
+      if (board.every(cell => cell !== "")) {
+          return { message: "Draw" };
+      }
+
+      return null;
   }
 });

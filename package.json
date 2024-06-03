@@ -1,6 +1,6 @@
 {
   "name": "hackathon-2024-onchainttt",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Block Magic: A Chainlink Hackathon, OnChainTTT",
   "main": "server/server.js",
   "scripts": {

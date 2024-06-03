@@ -1,41 +1,60 @@
+/*
+
+▄▄▄  ▄• ▄▌·▄▄▄·▄▄▄ ▄▄▄▄·  ▄• ▄▌·▄▄▄·▄▄▄
+▀▄ █·█▪██▌▐▄▄·▐▄▄· ▐█ ▀█▪ █▪██▌▐▄▄·▐▄▄·
+▐▀▀▄ █▌▐█▌██▪ ██▪  ▐█▀▀█▄ █▌▐█▌██▪ ██▪ 
+▐█•█▌▐█▄█▌██▌.██▌ .██▄▪▐█ ▐█▄█▌██▌.██▌.
+.▀  ▀ ▀▀▀ ▀▀▀ ▀▀▀  ·▀▀▀▀   ▀▀▀ ▀▀▀ ▀▀▀ 
+
+#Wallet: 0xruffbuff.eth
+#Discord: chain.eth | 0xRuffBuff#8817
+
+*/
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
-import "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "@chainlink/contracts/src/v0.8/functions/dev/v1_0_0/FunctionsClient.sol";
 import "@chainlink/contracts/src/v0.8/functions/dev/v1_0_0/libraries/FunctionsResponse.sol";
+import "@chainlink/contracts/src/v0.8/dev/vrf/VRFConsumerBaseV2Plus.sol";
+import "@chainlink/contracts/src/v0.8/dev/vrf/libraries/VRFV2PlusClient.sol";
+import "./PlayerRatings.sol";
+import "./Utils.sol";
 
-contract OnChainTTT is AutomationCompatibleInterface, FunctionsClient, ConfirmedOwner {
+contract OnChainTTT is VRFConsumerBaseV2Plus, AutomationCompatibleInterface, FunctionsClient {
     using FunctionsRequest for FunctionsRequest.Request;
+    using PlayerRatings for PlayerRatings.Player;
+    using Utils for *;
 
-    event GameCreated(uint256 gameId, address indexed player1, bytes32 gameKey);
+    event GameCreated(uint256 gameId, address indexed player1);
     event GameJoined(uint256 gameId, address indexed player2);
     event GameEnded(uint256 gameId, address winner, uint256 reward);
     event GameCancelled(uint256 gameId);
     event GameResultRequested(uint256 gameId);
+    event GameRequestFailed(uint256 gameId, string message);
     event WinnerDetermined(uint256 gameId, address winner);
     event AddressParsed(string rawAddress, address parsedAddress);
-    event RankUpdated(address indexed player, string newRank);
-    event RequestFailed(uint256 gameId, string message);
+    event RandomWRequstSent(uint256 requestId, uint32 numWords);
+    event RandomWRequstFulfilled(uint256 requestId, uint256[] randomWords); 
 
     struct Game {
         uint256 gameId;
         uint256 betAmount;
         uint256 lastCheckedTime;
+        uint256[] randomWords;
         uint8 requestAttempts;
         address player1;
         address player2;
         address winner;
-        bytes32 gameKey;
         bool isActive;
         bool winnerDetermined;
         bool requestSent;
     }
 
-    struct Player {
-        uint256 xp;
-        uint8 rankIndex;
+    struct RequestStatus {
+        bool fulfilled;
+        bool exists;
+        uint256[] randomWords;
     }
 
     address public constant DRAW_ADDRESS = 0x0000000000000000000000000000000000deaD11;
@@ -45,21 +64,26 @@ contract OnChainTTT is AutomationCompatibleInterface, FunctionsClient, Confirmed
     address public router;
     bytes32 public donID;
 
+    bytes32 keyHash = 0x816bedba8a50b294e5cbd47842baf240c2385f2eaf719edbd4f250a137a8c899;
+    uint32 callbackGasLimit = 300000;
+    uint16 requestConfirmations = 3;
+    uint32 numWords = 2;
+    uint256 public s_subscriptionId = 65874477381308627793694165998392943664525396676498444094557313498870528215104;
+
     uint32 public gasLimit;
     uint64 public subscriptionId;
     uint256 public nextGameId;
     uint256 public accumulatedFees;
     uint256 constant minBetAmount = 100000000000000; // 0.0001 $MATIC
     uint256 constant maxBetAmount = 100000000000000000000000; // 100,000.0000 $MATIC
-    uint256[] public xpThresholds = [0, 100, 250, 500, 1000, 2000];
-    string[] public rankNames = ["Beginner", "Novice", "Competent", "Proficient", "Expert", "Master"];
 
     mapping(uint256 => Game) public games;
-    mapping(address => Player) public players;
     mapping(address => uint256) private activeGameId;
+    mapping(uint256 => RequestStatus) public s_requests;
     mapping(bytes32 => uint256) private requestToGameId;
+    mapping(address => PlayerRatings.Player) public players;
 
-    constructor(address _router, address _admin1, address _admin2, bytes32 _donID) FunctionsClient(_router) ConfirmedOwner(msg.sender) {
+    constructor(address _router, address _admin1, address _admin2, bytes32 _donID) VRFConsumerBaseV2Plus(0x343300b5d84D444B2ADc9116FEF1bED02BE49Cf2) FunctionsClient(_router) {
         admin1 = _admin1;
         admin2 = _admin2;
         router = _router;
@@ -68,34 +92,30 @@ contract OnChainTTT is AutomationCompatibleInterface, FunctionsClient, Confirmed
         subscriptionId = 209;
     }
 
-    function setSubscriptionId(uint64 _subscriptionId) external onlyAdmin {
-        subscriptionId = _subscriptionId;
-    }
-
     function createGame() external payable {
-        require(msg.value >= minBetAmount, "Bet amount must be at least 0.0001 MATIC");
-        require(msg.value <= maxBetAmount, "Bet amount must be lower that 100,000.0000 MATIC");
+        require(msg.value >= minBetAmount, "MinBet is: 0.0001 MATIC");
+        require(msg.value <= maxBetAmount, "MaxBet is: 100,000.0000 MATIC");
         require(activeGameId[msg.sender] == 0 || !games[activeGameId[msg.sender]].isActive, "You already have an active game");
 
         uint256 gameId = nextGameId++;
-        bytes32 gameKey = keccak256(abi.encodePacked(msg.sender, gameId));
 
         games[gameId] = Game({
             gameId: gameId,
             betAmount: msg.value,
             lastCheckedTime: block.timestamp,
+            randomWords: new uint256[](numWords),
             requestAttempts: 0,
             player1: msg.sender,
             player2: address(0),
             winner: address(0),
-            gameKey: gameKey,
             isActive: true,
             winnerDetermined: false,
             requestSent: false
         });
 
         activeGameId[msg.sender] = gameId;
-        emit GameCreated(gameId, msg.sender, gameKey);
+        requestRandomWords(gameId, false); // Pay with LINK
+        emit GameCreated(gameId, msg.sender);
     }
 
     function joinGame(uint256 gameId) external payable gameExists(gameId) isActiveGame(gameId) {
@@ -111,13 +131,16 @@ contract OnChainTTT is AutomationCompatibleInterface, FunctionsClient, Confirmed
         emit GameJoined(gameId, msg.sender);
     }
 
-    function endGame(uint256 gameId) internal {
+    function endGame(uint256 gameId) internal isActiveGame(gameId) {
         Game storage game = games[gameId];
-        require(game.winnerDetermined, "Winner has not been determined yet");
-        require(game.isActive, "Game is not active");
+        require(game.winnerDetermined, "Winner not yet determined");
 
         updatePlayerXP(game.player1, game.winner == game.player1);
         updatePlayerXP(game.player2, game.winner == game.player2);
+
+        updatePlayerRank(game.player1);
+        updatePlayerRank(game.player2);
+
         game.isActive = false;
         activeGameId[game.player1] = 0;
         if (game.player2 != address(0)) {
@@ -138,42 +161,24 @@ contract OnChainTTT is AutomationCompatibleInterface, FunctionsClient, Confirmed
         }
     }
 
-    function updatePlayerXP(address player, bool won) internal {
-        uint256 xpWon = won ? 50 : 10;
-        Player storage playerInfo = players[player];
-        playerInfo.xp += xpWon;
-
-        updatePlayerRank(player);
-    }
-
-    function updatePlayerRank(address player) internal {
-        Player storage playerInfo = players[player];
-        uint8 newRankIndex = playerInfo.rankIndex;
-
-        for (uint8 i = playerInfo.rankIndex; i < xpThresholds.length; i++) {
-            if (playerInfo.xp >= xpThresholds[i]) {
-                newRankIndex = i;
-            } else {
-                break;
-            }
-        }
-
-        if (newRankIndex != playerInfo.rankIndex) {
-            playerInfo.rankIndex = newRankIndex;
-            emit RankUpdated(player, rankNames[newRankIndex]);
-        }
-    }
-
     function cancelGame(uint256 gameId) external gameExists(gameId) isActiveGame(gameId) {
         Game storage game = games[gameId];
         require(game.player1 == msg.sender, "Only the creator can cancel the game");
-        require(game.player2 == address(0), "Cannot cancel a game that has already started");
+        require(game.player2 == address(0), "Game already full");
 
         game.isActive = false;
         activeGameId[msg.sender] = 0;
         payable(game.player1).transfer(game.betAmount);
 
         emit GameCancelled(gameId);
+    }
+
+    function updatePlayerXP(address playerAddress, bool won) internal {
+        players[playerAddress].updateXP(won);
+    }
+
+    function updatePlayerRank(address playerAddress) internal {
+        players[playerAddress].updateRank(playerAddress);
     }
 
     function getActiveGames() external view returns (Game[] memory) {
@@ -196,17 +201,59 @@ contract OnChainTTT is AutomationCompatibleInterface, FunctionsClient, Confirmed
         return activeGames;
     }
 
-    function withdraw(uint256 amount) external onlyAdmin {
-        require(amount <= accumulatedFees, "Amount exceeds available fees");
+    function withdraw(uint256 amount) external onlyOwner() {
+        require(amount <= accumulatedFees, "Withdrawal miss");
         accumulatedFees -= amount;
         payable(msg.sender).transfer(amount);
+    }
+
+    function requestRandomWords(uint256 gameId, bool enableNativePayment) internal returns (uint256 requestId) {
+        requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: keyHash,
+                subId: s_subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: numWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({
+                        nativePayment: enableNativePayment
+                    })
+                )
+            })
+        );
+        s_requests[requestId] = RequestStatus({
+            randomWords: new uint256[](numWords),
+            exists: true,
+            fulfilled: false
+        });
+        games[gameId].requestSent = true;
+        requestToGameId[bytes32(requestId)] = gameId;
+        emit RandomWRequstSent(requestId, numWords);
+        return requestId;
+    }
+
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        require(s_requests[requestId].exists, "request not found");
+        s_requests[requestId].fulfilled = true;
+        s_requests[requestId].randomWords = randomWords;
+        uint256 gameId = requestToGameId[bytes32(requestId)];
+        Game storage game = games[gameId];
+        game.requestSent = false;
+        game.randomWords = randomWords;
+        emit RandomWRequstFulfilled(requestId, randomWords);
+    }
+
+    function getRandomWords(uint256 gameId) public view returns (uint256[] memory) {
+        require(gameId < nextGameId, "Game does not exist");
+        return games[gameId].randomWords;
     }
 
     function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory performData) {
         for (uint256 i = 0; i < nextGameId; i++) {
             Game storage game = games[i];
             if (game.isActive) {
-                if (!game.winnerDetermined && game.player2 != address(0) && !game.requestSent && block.timestamp >= game.lastCheckedTime + 40 seconds) {
+                if (!game.winnerDetermined && game.player2 != address(0) && !game.requestSent && block.timestamp >= game.lastCheckedTime + 20 seconds) {
                     return (true, abi.encode(true, i));
                 }
                 if (game.winnerDetermined) {
@@ -242,7 +289,7 @@ contract OnChainTTT is AutomationCompatibleInterface, FunctionsClient, Confirmed
     function requestGameResult(uint256 gameId) internal {
         Game storage game = games[gameId];
         require(!game.requestSent, "Request already sent");
-        require(!game.winnerDetermined, "Winner has already been determined");
+        require(!game.winnerDetermined, "Winner determined");
         
         game.requestAttempts++;
         game.requestSent = true;
@@ -266,7 +313,7 @@ contract OnChainTTT is AutomationCompatibleInterface, FunctionsClient, Confirmed
         );
 
         string[] memory args = new string[](1);
-        args[0] = uint2str(gameId);
+        args[0] = Utils.uint2str(gameId);
         req.setArgs(args);
 
         bytes32 requestId = _sendRequest(
@@ -283,76 +330,26 @@ contract OnChainTTT is AutomationCompatibleInterface, FunctionsClient, Confirmed
     function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory) internal override {
         uint256 gameId = requestToGameId[requestId];
         Game storage game = games[gameId];
-        require(!game.winnerDetermined, "Winner has already been determined.");
+        require(!game.winnerDetermined, "Winner determined.");
 
         if (bytes(string(response)).length < 42) {
-            emit RequestFailed(gameId, "Invalid response length");
+            emit GameRequestFailed(gameId, "Invalid response length");
             if (game.requestAttempts < 2) {
                 game.requestSent = false;
                 game.lastCheckedTime = block.timestamp;
                 requestGameResult(gameId);
             } else {
                 delete requestToGameId[requestId];
-                game.isActive = false; 
             }
             return;
         }
 
-        address winner = parseAddress(string(response));
+        address winner = Utils.parseAddress(string(response));
         game.winner = winner;
         game.winnerDetermined = true;
         game.requestSent = false;
         emit WinnerDetermined(gameId, winner);
         delete requestToGameId[requestId];
-    }
-
-    function uint2str(uint _i) internal pure returns (string memory _uintAsString) {
-        if (_i == 0) {
-            return "0";
-        }
-        uint j = _i;
-        uint len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint k = len;
-        while (_i != 0) {
-            k = k - 1;
-            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
-            bytes1 b1 = bytes1(temp);
-            bstr[k] = b1;
-            _i /= 10;
-        }
-        return string(bstr);
-    }
-
-    function parseAddress(string memory addr) internal returns (address) {
-        bytes memory addrBytes = bytes(addr);
-        require(addrBytes.length >= 42, "Address string too short");
-        uint160 result = 0;
-        uint160 b;
-        uint160 base = 16;
-
-        for (uint256 i = 2; i < 42; i++) {
-            b = uint160(uint8(addrBytes[i]));
-            if (b >= 48 && b <= 57) {
-                b -= 48;
-            } else if (b >= 65 && b <= 70) {
-                b -= 55;
-            } else if (b >= 97 && b <= 102) {
-                b -= 87;
-            } else {
-                revert("Invalid character in address");
-            }
-
-            result = result * base + b;
-        }
-
-        address parsed = address(result);
-        emit AddressParsed(addr, parsed);
-        return parsed;
     }
 
     modifier gameExists(uint256 gameId) {
@@ -362,11 +359,6 @@ contract OnChainTTT is AutomationCompatibleInterface, FunctionsClient, Confirmed
 
     modifier isActiveGame(uint256 gameId) {
         require(games[gameId].isActive, "Game is not active");
-        _;
-    }
-
-    modifier onlyAdmin() {
-        require(msg.sender == admin1 || msg.sender == admin2, "Only admins can call this function");
         _;
     }
 }

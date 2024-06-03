@@ -175,26 +175,45 @@ function tryPairing() {
 
         waitingQueue.splice(0, 2);
 
-        [firstId, secondId].forEach((id, index) => {
-            const symbol = index === 0 ? "X" : "O";
-            sessionLinks[id].emit(
+        contract.methods.getRandomWords(firstGameId).call().then(randomWords => {
+            console.log(`Random Words for game ${firstGameId}: [${randomWords[0]}, ${randomWords[1]}]`);
+            const firstPlayerTurn = randomWords[0] > randomWords[1] ? firstId : secondId;
+            const secondPlayerTurn = firstPlayerTurn === firstId ? secondId : firstId;
+
+            sessionLinks[firstPlayerTurn].emit(
                 "message",
                 JSON.stringify({
                     method: "join",
-                    symbol,
+                    symbol: "X",
                     turn: "X",
                     gameId: firstGameId,
                     betAmount: firstBetAmount,
                 }),
             );
-            gameOpponents[id] = index === 0 ? secondId : firstId;
-            gameSessions[firstGameId] = [firstId, secondId];
-            activeSessions.add(id);
-        });
 
-        logEvent(
-            `Game paired: Session ${firstId} (X) vs Session ${secondId} (O) with bet amount ${firstBetAmount}`,
-        );
+            sessionLinks[secondPlayerTurn].emit(
+                "message",
+                JSON.stringify({
+                    method: "join",
+                    symbol: "O",
+                    turn: "X",
+                    gameId: firstGameId,
+                    betAmount: firstBetAmount,
+                }),
+            );
+
+            gameOpponents[firstPlayerTurn] = secondPlayerTurn;
+            gameOpponents[secondPlayerTurn] = firstPlayerTurn;
+            gameSessions[firstGameId] = [firstPlayerTurn, secondPlayerTurn];
+            activeSessions.add(firstPlayerTurn);
+            activeSessions.add(secondPlayerTurn);
+
+            logEvent(
+                `Game paired: Session ${firstPlayerTurn} (X) vs Session ${secondPlayerTurn} (O) for game ${firstGameId} with bet amount ${firstBetAmount}`,
+            );
+        }).catch(err => {
+            console.error("Failed to retrieve random numbers for game ${firstGameId}: " + err.message);
+        });
     }
 }
 
@@ -255,6 +274,11 @@ function processMove(action, sessionId) {
 }
 
 async function saveWinner(gameId, winnerAccount) {
+    if (!gameId || !winnerAccount) {
+        console.error("Error: gameId or winnerAccount is undefined");
+        return;
+    }
+
     const specialDrawAddress = "0x0000000000000000000000000000000000deaD11";
     const accountToSave = winnerAccount === "draw" ? specialDrawAddress : winnerAccount;
 
