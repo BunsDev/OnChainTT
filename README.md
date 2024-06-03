@@ -9,7 +9,7 @@ Project created & compiled by: [Ambientiumim](https://github.com/Ambientiumim) a
 - [Chainlink Hackathon: Block Magic](https://chain.link/hackathon)
 
 ## Demo:
-[Watch OnChainTTT Demo on YouTube](https://www.youtube.com/watch?v=45dmydOxl4U)
+<iframe width="560" height="315" src="https://www.youtube.com/embed/45dmydOxl4U" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 ## Overview
 "Block Magic: OnChainTTT" is a decentralized Tic Tac Toe game innovated for the Chainlink Hackathon. This game leverages blockchain's immutable nature to guarantee both transparency and integrity in gameplay, while integrating Chainlink's oracles for secure random number generation and autonomous enforcement of game states.
