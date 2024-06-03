@@ -60,5 +60,3 @@ Here's a look at the "OnChainTTT" game interface:
 "Block Magic: OnChainTTT" exemplifies the integration of blockchain technology with traditional gaming, enhancing transparency, security, and fairness through the use of smart contracts and decentralized services like Chainlink VRF and Automation. It showcases how blockchain can transform gaming by adding verifiable fairness and automated game management, promising a robust platform for secure, trustless gaming experiences.
 
 Thank you for exploring "Block Magic: OnChainTTT". Dive into the code, try out the game, and see how blockchain technology is revolutionizing the way we play and interact with digital systems.
-
-![Block Magic: OnChainTTT](client/OnChainTTT.jpg "OnChainTTT")
