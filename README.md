@@ -9,10 +9,7 @@ Project created & compiled by: [Ambientiumim](https://github.com/Ambientiumim) a
 - [Chainlink Hackathon: Block Magic](https://chain.link/hackathon)
 
 ## Demo:
-<video width="320" height="240" controls>
-  <source src="client/test.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+![OnChainTTT Demo](http://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg)
 
 ## Overview
 "Block Magic: OnChainTTT" is a decentralized Tic Tac Toe game innovated for the Chainlink Hackathon. This game leverages blockchain's immutable nature to guarantee both transparency and integrity in gameplay, while integrating Chainlink's oracles for secure random number generation and autonomous enforcement of game states.
@@ -37,7 +34,7 @@ The contract emits various events to make the game's progress transparent and ve
 - **`createGame()`**: Launches a new game session where others can join.
 - **`joinGame(gameId)`**: Lets a second player join a specific game using the game's unique ID.
 - **`endGame(gameId)`**: Concludes the game when the conditions are met, like one player winning or a draw.
-- **`cancelGame(gameId)`**: Allows the game initiator to cancel the game if no one has joined, refunding the stake.
+- **`cancelGame(gameId)`**: Allows the game initiator to cancel the game if no one has bjoined, refunding the stake.
 
 ### Randomness and Game Logic
 - **`requestRandomWords(gameId, enableNativePayment)`**: Requests random numbers needed for game logic, like deciding the starting player.
@@ -56,8 +53,8 @@ By using Chainlink's decentralized services like VRF and Automation, "OnChainTTT
 
 ## Visual Overview
 Here's a look at the "OnChainTTT" game interface:
-![OnChainTTT Game Interface](client/OnChainTTT0.jpg "OnChainTTT Interface")
-![OnChainTTT Game Interface](client/OnChainTTT1.jpg "OnChainTTT Interface")
+![OnChainTTT Game Interface](client/OnChainTTT0.png "OnChainTTT Interface")
+![OnChainTTT Game Interface2](client/OnChainTTT1.png "OnChainTTT Interface2")
 
 ## Conclusion
 "Block Magic: OnChainTTT" exemplifies the integration of blockchain technology with traditional gaming, enhancing transparency, security, and fairness through the use of smart contracts and decentralized services like Chainlink VRF and Automation. It showcases how blockchain can transform gaming by adding verifiable fairness and automated game management, promising a robust platform for secure, trustless gaming experiences.
