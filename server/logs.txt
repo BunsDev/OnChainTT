@@ -14,3 +14,22 @@
 2024-06-03T02:18:42.553Z - Client disconnected: Session 5
 2024-06-03T02:37:52.125Z - Client disconnected: Session 6
 2024-06-03T02:46:49.947Z - Client disconnected: Session 4
+2024-06-03T03:32:22.831Z - Client disconnected: Session 3
+2024-06-03T03:33:37.716Z - Client disconnected: Session 5
+2024-06-03T03:33:39.901Z - Client disconnected: Session 4
+2024-06-03T03:35:32.513Z - Client disconnected: Session 6
+2024-06-03T04:07:27.758Z - Wallet connected: Session 7 - Account 0x5cee0e6d261da886aa4f02fb47f45e1e9fa4991b
+2024-06-03T04:07:28.820Z - Wallet connected: Session 8 - Account 0xcdf5b1ed8fd5b89de98c325854331ae4b4e996e6
+2024-06-03T04:07:51.612Z - Session 8 started a game with bet amount 0.0001
+2024-06-03T04:09:14.249Z - Session 7 joined a game
+2024-06-03T04:09:14.376Z - Game paired: Session 8 (X) vs Session 7 (O) for game 32 with bet amount 0.0001
+2024-06-03T04:09:19.921Z - Move by Session 8: ["","","","","X","","","",""]
+2024-06-03T04:09:22.114Z - Move by Session 7: ["","O","","","X","","","",""]
+2024-06-03T04:09:24.217Z - Move by Session 8: ["","O","","","X","","X","",""]
+2024-06-03T04:09:25.762Z - Move by Session 7: ["","O","","O","X","","X","",""]
+2024-06-03T04:09:27.601Z - Move by Session 8: ["","O","","O","X","","X","","X"]
+2024-06-03T04:09:29.211Z - Move by Session 7: ["","O","","O","X","O","X","","X"]
+2024-06-03T04:09:35.099Z - Move by Session 8: ["","O","X","O","X","O","X","","X"]
+2024-06-03T04:09:35.121Z - Game result: X wins
+2024-06-03T04:10:11.039Z - Client disconnected: Session 7
+2024-06-03T04:10:18.224Z - Client disconnected: Session 8
